@@ -80,6 +80,7 @@ public class MainActivity extends Activity {
 //        } else{
 //            allowedCredentials = new Credentials();
 //        }
+        allowedCredentials = new Credentials(null, null);
 
         LiteListener listener = new LiteListener(manager, suggestedListenPort, allowedCredentials);
 
