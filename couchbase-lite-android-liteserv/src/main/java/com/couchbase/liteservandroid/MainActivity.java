@@ -2,7 +2,6 @@ package com.couchbase.liteservandroid;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
 
@@ -15,6 +14,7 @@ import com.couchbase.lite.javascript.JavaScriptReplicationFilterCompiler;
 import com.couchbase.lite.javascript.JavaScriptViewCompiler;
 import com.couchbase.lite.listener.Credentials;
 import com.couchbase.lite.listener.LiteListener;
+import com.couchbase.lite.util.Log;
 
 import java.io.IOException;
 
@@ -76,15 +76,26 @@ public class MainActivity extends Activity {
 
     private int startCBLListener(int suggestedListenPort) throws IOException, CouchbaseLiteException {
 
+        Manager.enableLogging(Log.TAG, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_SYNC_ASYNC_TASK, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_SYNC, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_QUERY, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_VIEW, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_DATABASE, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_ROUTER, Log.VERBOSE);
+        Manager.enableLogging(Log.TAG_LISTENER, Log.VERBOSE);
+
         Manager manager = startCBLite();
         startDatabase(manager, DATABASE_NAME);
 
 
-        if (getLogin()!=null && getPassword()!=null){
-            allowedCredentials = new Credentials(getLogin(), getPassword());
-        } else{
-            allowedCredentials = new Credentials();
-        }
+//        if (getLogin()!=null && getPassword()!=null){
+//            allowedCredentials = new Credentials(getLogin(), getPassword());
+//        } else{
+//            allowedCredentials = new Credentials();
+//        }
+        allowedCredentials = new Credentials("","");
+
 
         LiteListener listener = new LiteListener(manager, suggestedListenPort, allowedCredentials);
 
