@@ -12,6 +12,7 @@ import com.couchbase.lite.CouchbaseLiteException;
 import com.couchbase.lite.Database;
 import com.couchbase.lite.DatabaseOptions;
 import com.couchbase.lite.Manager;
+import com.couchbase.lite.Status;
 import com.couchbase.lite.View;
 import com.couchbase.lite.android.AndroidContext;
 import com.couchbase.lite.javascript.JavaScriptReplicationFilterCompiler;
@@ -19,10 +20,20 @@ import com.couchbase.lite.javascript.JavaScriptViewCompiler;
 import com.couchbase.lite.listener.Credentials;
 import com.couchbase.lite.listener.LiteListener;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
+import java.util.Properties;
+
+import Acme.Serve.SSLAcceptor;
+import Acme.Serve.Serve;
 
 public class MainActivity extends Activity {
+    private static final boolean SSL = true;
     private static final int DEFAULT_LISTEN_PORT = 5984;
     private static final String DATABASE_NAME = "cblite-test";
     private static final String LISTEN_PORT_PARAM_NAME = "listen_port";
@@ -114,17 +125,28 @@ public class MainActivity extends Activity {
         Manager manager = startCBLite();
         startDatabase(manager, DATABASE_NAME);
 
-        if (getLogin() != null && getPassword() != null) {
-            if (getLogin().equals("none") && getPassword().equals("none")) {
-                allowedCredentials = new Credentials("", "");
-            } else {
-                allowedCredentials = new Credentials(getLogin(), getPassword());
-            }
-        } else {
-            allowedCredentials = new Credentials();
-        }
+        allowedCredentials = new Credentials("", "");
 
-        LiteListener listener = new LiteListener(manager, suggestedListenPort, allowedCredentials);
+        LiteListener listener;
+        // HTTPS (SSL)
+        if (SSL) {
+            File certificateFile = new File(this.getFilesDir(), "certificate.pfx");
+            if (!certificateFile.exists()) {
+                if (!extractCertificateFromAsset(certificateFile))
+                    throw new CouchbaseLiteException("Unable to extract crificate file from asset", Status.INTERNAL_SERVER_ERROR);
+            }
+            Properties props = new Properties();
+            props.setProperty(Serve.ARG_ACCEPTOR_CLASS, "Acme.Serve.SSLAcceptor");
+            props.setProperty(SSLAcceptor.ARG_KEYSTORETYPE, "PKCS12");
+            props.setProperty(SSLAcceptor.ARG_KEYSTOREFILE, certificateFile.getAbsolutePath());
+            props.setProperty(SSLAcceptor.ARG_KEYSTOREPASS, "cbmobile");
+            props.setProperty(SSLAcceptor.ARG_PORT, String.valueOf(suggestedListenPort));
+            listener = new LiteListener(manager, suggestedListenPort, allowedCredentials, props);
+        }
+        // HTTP
+        else {
+            listener = new LiteListener(manager, suggestedListenPort, allowedCredentials);
+        }
         int port = listener.getListenPort();
         Thread thread = new Thread(listener);
         thread.start();
@@ -182,6 +204,37 @@ public class MainActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    private boolean extractCertificateFromAsset(File ceritificateFile) {
+        InputStream is = null;
+        try {
+            is = getAssets().open("certificate.pfx");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        OutputStream os = null;
+        try {
+            os = new FileOutputStream(ceritificateFile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        byte[] buffer = new byte[1024];
+        int read;
+        try {
+            while ((read = is.read(buffer)) != -1) {
+                os.write(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
         return true;
     }
 }
